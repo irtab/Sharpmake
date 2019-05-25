@@ -122,6 +122,8 @@ namespace Sharpmake
                     return "14.0";
                 case DevEnv.vs2017:
                     return "15.0";
+                case DevEnv.vs2019:
+                    return "16.0";
                 default:
                     throw new Error("DevEnv " + visualVersion + " not recognized!");
             }
@@ -141,6 +143,8 @@ namespace Sharpmake
                     return 14;
                 case DevEnv.vs2017:
                     return 15;
+                case DevEnv.vs2019:
+                    return 16;
                 default:
                     throw new NotImplementedException("DevEnv " + visualVersion + " not recognized!");
             }
@@ -165,6 +169,8 @@ namespace Sharpmake
                     return "v140";
                 case DevEnv.vs2017:
                     return "v141";
+                case DevEnv.vs2019:
+                    return "v142";
                 default:
                     throw new Error("DevEnv " + visualVersion + " not recognized!");
             }
@@ -244,6 +250,7 @@ namespace Sharpmake
                         return Path.Combine(vsDir, "VC");
 
                     case DevEnv.vs2017:
+                    case DevEnv.vs2019:
                         string compilerVersion = "14.10.25017"; // default fallback
                         try
                         {
@@ -540,6 +547,8 @@ namespace Sharpmake
                     return visualVersion == DevEnv.vs2015;
                 case Options.Vc.General.PlatformToolset.v141:
                     return visualVersion == DevEnv.vs2017;
+                case Options.Vc.General.PlatformToolset.v142:
+                    return visualVersion == DevEnv.vs2019;
                 case Options.Vc.General.PlatformToolset.v110_xp:
                 case Options.Vc.General.PlatformToolset.v120_xp:
                 case Options.Vc.General.PlatformToolset.v140_xp:
@@ -597,8 +606,8 @@ namespace Sharpmake
             if (devEnv == other)
                 return true;
 
-            // VS2017 is guaranteed by Microsoft to be ABI-compatible with VS2015 for C++.
-            if ((devEnv == DevEnv.vs2015 && other == DevEnv.vs2017) || (devEnv == DevEnv.vs2017 && other == DevEnv.vs2015))
+            // VS2017 and VS2019 are guaranteed by Microsoft to be ABI-compatible with VS2015 for C++.
+            if ((devEnv >= DevEnv.vs2015 && devEnv <= DevEnv.vs2019) && (other >= DevEnv.vs2015 && other <= DevEnv.vs2019))
                 return true;
 
             return false;

@@ -153,7 +153,7 @@ namespace Sharpmake
         {
             return new Target(
                 Platform.anycpu,
-                DevEnv.vs2015 | DevEnv.vs2017,
+                DevEnv.vs2015 | DevEnv.vs2017 | DevEnv.vs2019,
                 Optimization.Debug,
                 OutputType.Dll,
                 Blob.NoBlob,

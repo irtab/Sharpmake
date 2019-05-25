@@ -43,6 +43,11 @@ namespace Sharpmake.Generators.VisualStudio
 # Visual Studio 15
 ";
 
+                public static string HeaderBeginVs2019 =
+@"Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+";
+
                 public static string ProjectBegin =
 @"Project(""{[projectTypeGuid]}"") = ""[projectName]"", ""[projectFile]"", ""{[projectGuid]}""
 ";
