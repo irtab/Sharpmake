@@ -1001,6 +1001,7 @@ namespace Sharpmake.Generators.VisualStudio
                 case DevEnv.vs2013:
                 case DevEnv.vs2015:
                 case DevEnv.vs2017:
+                case DevEnv.vs2019:
                     {
                         context.Options["_IsNativeEnvironment"] = FileGeneratorUtilities.RemoveLineTag;
                         context.SelectOption
@@ -1958,7 +1959,7 @@ namespace Sharpmake.Generators.VisualStudio
                 }
                 else
                 {
-                    if (isMicrosoftPlatform && context.DevelopmentEnvironment == DevEnv.vs2017 && forceFullPDB)
+                    if (isMicrosoftPlatform && (context.DevelopmentEnvironment == DevEnv.vs2017 || context.DevelopmentEnvironment == DevEnv.vs2019) && forceFullPDB)
                     {
                         context.Options["GenerateDebugInformation"] = "DebugFull";
                         context.CommandLineOptions["GenerateDebugInformation"] = "/DEBUG:FULL";

@@ -347,6 +347,7 @@ namespace Sharpmake.Generators.VisualStudio
                     case DevEnv.vs2013: vcRootPathKey = "VCInstallDir_120"; break;
                     case DevEnv.vs2015: vcRootPathKey = "VCInstallDir_140"; break;
                     case DevEnv.vs2017: vcRootPathKey = "VCToolsInstallDir_150"; break;
+                    case DevEnv.vs2019: vcRootPathKey = "VCToolsInstallDir_160"; break;
                     default:
                         throw new NotImplementedException("Please implement redirection of toolchain for " + devEnv);
                 }
