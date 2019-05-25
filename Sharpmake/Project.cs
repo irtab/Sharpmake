@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace Sharpmake
@@ -2225,8 +2226,8 @@ namespace Sharpmake
         {
             foreach (var conf in Configurations)
             {
-                SourceFilesExcludeRegex.Add(conf.TargetPath.Replace("\\", "\\\\"));
-                SourceFilesExcludeRegex.Add(conf.IntermediatePath.Replace("\\", "\\\\"));
+                SourceFilesExcludeRegex.Add(Regex.Escape(conf.TargetPath));
+                SourceFilesExcludeRegex.Add(Regex.Escape(conf.IntermediatePath));
             }
         }
 
