@@ -1,17 +1,38 @@
 @echo off
 setlocal
+setlocal EnableDelayedExpansion
 
 :: set batch file directory as current
 pushd "%~dp0"
 
 set SHARPMAKE_EXECUTABLE=bin\debug\Sharpmake.Application.exe
+set VSWHERE_EXECUTABLE="%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 
-if not defined VS140COMNTOOLS (
+:: Try to use vswhere to get the latest Common Tools path
+if exist %VSWHERE_EXECUTABLE% (
+    for /f "tokens=*" %%A in ('%VSWHERE_EXECUTABLE% -latest -property installationPath') do (
+        set VS_INSTALL_PATH=%%A
+    )
+
+    :: Sanity check, can happen if vswhere is installed but no supported version of Visual Studio is available
+    if not "!VS_INSTALL_PATH!"=="" (
+        set "VSCOMNTOOLS=!VS_INSTALL_PATH!\Common7\Tools\"
+    )
+)
+
+:: Fallback if only VS2015 is installed
+if not defined VSCOMNTOOLS (
+    if defined VS140COMNTOOLS (
+        set "VSCOMNTOOLS=%VS140COMNTOOLS%"
+    )
+)
+
+if not defined VSCOMNTOOLS (
     echo ERROR: Cannot determine the location of the VS Common Tools folder.
     goto error
 )
 
-call "%VS140COMNTOOLS%VsMSBuildCmd.bat"
+call "%VSCOMNTOOLS%VsMSBuildCmd.bat"
 if %errorlevel% NEQ 0 goto error
 
 call :NugetRestore Sharpmake/Sharpmake.csproj
