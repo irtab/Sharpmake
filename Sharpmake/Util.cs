@@ -1439,6 +1439,15 @@ namespace Sharpmake
             return outputValue;
         }
 
+        private static bool? s_isVisualStudio2019Installed = null;
+        public static bool IsVisualStudio2019Installed()
+        {
+            if (!s_isVisualStudio2019Installed.HasValue)
+                s_isVisualStudio2019Installed = IsVisualStudioInstalled(DevEnv.vs2019);
+
+            return s_isVisualStudio2019Installed.Value;
+        }
+
         private static bool? s_isVisualStudio2017Installed = null;
         public static bool IsVisualStudio2017Installed()
         {
@@ -1725,6 +1734,7 @@ namespace Sharpmake
                     return DotNetFramework.v4_5.ToVersionString();
                 case DevEnv.vs2015:
                 case DevEnv.vs2017:
+                case DevEnv.vs2019:
                     return env.GetVisualProjectToolsVersionString();
                 case DevEnv.xcode4ios:
                     throw new NotSupportedException("XCode does not support Tool Version. ");
@@ -1780,6 +1790,7 @@ namespace Sharpmake
                     case DevEnv.vs2013:
                     case DevEnv.vs2015:
                     case DevEnv.vs2017:
+                    case DevEnv.vs2019:
                         {
                             extension = ".vcxproj";
                         }
