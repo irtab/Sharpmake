@@ -185,6 +185,7 @@ namespace Sharpmake
                 case DevEnv.vs2013: return "2013";
                 case DevEnv.vs2015: return "2015";
                 case DevEnv.vs2017: return "2017";
+                case DevEnv.vs2019: return "2019";
                 default:
                     throw new Error("DevEnv " + visualVersion + " not recognized!");
             }
@@ -224,8 +225,8 @@ namespace Sharpmake
                 string installDir = Util.GetVisualStudioInstallPathFromQuery(visualVersion);
                 if (string.IsNullOrEmpty(installDir))
                 {
-                    installDir = visualVersion == DevEnv.vs2017
-                        ? @"Microsoft Visual Studio\2017\Professional"
+                    installDir = visualVersion >= DevEnv.vs2017
+                        ? string.Format(@"Microsoft Visual Studio\{0}\Professional", GetVSYear(visualVersion))
                         : string.Format(@"Microsoft Visual Studio {0}", visualVersion.GetVisualVersionString());
                     installDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), installDir);
                 }
@@ -284,6 +285,7 @@ namespace Sharpmake
                         return Path.Combine(visualVersion.GetVisualStudioVCRootPath(), "bin", targetPlatform);
                     }
                 case DevEnv.vs2017:
+                case DevEnv.vs2019:
                     {
                         string targetPlatform = (platform == Platform.win64) ? "x64" : "x86";
                         string compilerHost = Environment.Is64BitOperatingSystem ? "HostX64" : "HostX86";
@@ -443,7 +445,7 @@ namespace Sharpmake
         {
             string visualStudioVCDir = Util.EnsureTrailingSeparator(visualVersion.GetVisualStudioVCRootPath());
             string subDir = platform == Platform.win64 ? @"\amd64" : "";
-            if (visualVersion == DevEnv.vs2017)
+            if (visualVersion >= DevEnv.vs2017)
                 subDir = platform == Platform.win64 ? @"\x64" : @"\x86";
 
             string visualStudioLib = string.Format(@"{0}lib{1};{0}atlmfc\lib{1};", visualStudioVCDir, subDir);
