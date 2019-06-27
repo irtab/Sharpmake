@@ -199,6 +199,17 @@ namespace Sharpmake.Application
                 if (parameters.Exit)
                     return (int)ExitCode.Success;
 
+                const string sharpmakeSymbolPrefix = "_SHARPMAKE";
+                List<string> invalidSymbols = parameters.Defines.Where(define => define.StartsWith(sharpmakeSymbolPrefix)).ToList();
+                if (invalidSymbols.Any())
+                {
+                    string invalidSymbolsString = string.Join(", ", invalidSymbols);
+                    throw new Error($"Only Sharpmake process can define symbols starting with {sharpmakeSymbolPrefix}. Invalid symbols defined: {invalidSymbolsString}");
+                }
+
+                parameters.Defines.Add($"{sharpmakeSymbolPrefix}_{version.Major}_{version.Minor}_X");
+                parameters.Defines.Add($"{sharpmakeSymbolPrefix}_{version.Major}_{version.Minor}_{version.Build}");
+
                 parameters.Validate();
 
                 // CommonPlatforms.dll is always loaded by default because those are shipped with
@@ -253,7 +264,7 @@ namespace Sharpmake.Application
                                 exitCode = ExitCode.Error;
                                 DebugWriteLine($"{regressions.Count} Regressions detected:");
                                 List<BuildContext.RegressionTest.OutputInfo> fileChanges = regressions.Where(x => x.FileStatus == BuildContext.RegressionTest.FileStatus.Different).ToList();
-                                LogFileChanges(fileChanges);
+                                LogFileChanges(fileChanges, parameters.RegressionDiff);
 
                                 var fileMissing = regressions.Where(x => x.FileStatus == BuildContext.RegressionTest.FileStatus.NotGenerated).Select(x => x.ReferencePath).ToList();
                                 if (fileMissing.Count > 0)
@@ -534,7 +545,8 @@ namespace Sharpmake.Application
                 parameters.BlobOnly,
                 parameters.SkipInvalidPath,
                 parameters.Diagnostics,
-                Program.GetGeneratorsManager
+                Program.GetGeneratorsManager,
+                parameters.Defines
             );
 
             // Allow message log from builder.
@@ -551,7 +563,7 @@ namespace Sharpmake.Application
                 // Generate debug solution
                 if (generateDebugSolution)
                 {
-                    DebugProjectGenerator.GenerateDebugSolution(parameters.Sources, builder.Arguments);
+                    DebugProjectGenerator.GenerateDebugSolution(parameters.Sources, builder.Arguments, parameters.DebugSolutionStartArguments);
                     builder.BuildProjectAndSolution();
                     return builder;
                 }
@@ -626,7 +638,7 @@ namespace Sharpmake.Application
             return null;
         }
 
-        private static void LogFileChanges(List<BuildContext.RegressionTest.OutputInfo> fileChanges)
+        private static void LogFileChanges(List<BuildContext.RegressionTest.OutputInfo> fileChanges, bool showRegressionDiff)
         {
             if (fileChanges.Count == 0)
                 return;
@@ -636,7 +648,7 @@ namespace Sharpmake.Application
 
 
             string diffExecutable = LocateDiffExecutable();
-            if (diffExecutable == null)
+            if (!showRegressionDiff || diffExecutable == null)
             {
                 DebugWriteLine($"  {fileChanges.Count} files have changed from the reference:");
                 fileChanges.ForEach(x =>

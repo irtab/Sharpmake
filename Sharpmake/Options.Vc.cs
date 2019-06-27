@@ -43,6 +43,8 @@ namespace Sharpmake
                     v141, // Visual Studio 2017
                     [DevEnvVersion(minimum = DevEnv.vs2017)]
                     v141_xp, // Visual Studio 2017 - Windows XP
+                    [DevEnvVersion(minimum = DevEnv.vs2019)]
+                    v142, // Visual Studio 2019
                     [DevEnvVersion(minimum = DevEnv.vs2012)]
                     LLVM_vs2012, // LLVM from Visual Studio 2012
                     [DevEnvVersion(minimum = DevEnv.vs2015)]
@@ -59,8 +61,9 @@ namespace Sharpmake
                     v10_0_14393_0, // 2016 Anniversary Update
                     v10_0_15063_0, // 2017 Creators Update
                     v10_0_16299_0, // 2017 Fall Creators Update
-                    v10_0_17134_0, // April 2018 Update
-                    v10_0_17763_0, // October 2018 Update
+                    v10_0_17134_0, // 1803, April 2018 Update
+                    v10_0_17763_0, // 1809, October 2018 Update
+                    v10_0_18362_0, // 1903, May 2019 Update
                 }
 
                 public enum CharacterSet
@@ -472,6 +475,13 @@ namespace Sharpmake
                 {
                     [Default]
                     Disable,
+                    Enable
+                }
+
+                public enum DefineCPlusPlus
+                {
+                    Disable,
+                    [Default]
                     Enable
                 }
 

@@ -206,7 +206,7 @@ namespace Sharpmake.Generators.Generic
                 string configurationPlatformAndName = conf.Name + "|" + conf.PlatformName;
 
                 if (solutionNameMapping.TryGetValue(configurationPlatformAndName, out otherConf))
-                    throw new Error("Solution {0} have 2 configurations with the same name: \"{1}\" for {2} and {3}", solution.Name, conf.Name, otherConf.Target, conf.Target);
+                    throw new Error("Solution {0} has 2 configurations with the same name: \"{1}\" for {2} and {3}", solution.Name, conf.Name, otherConf.Target, conf.Target);
 
                 solutionNameMapping[configurationPlatformAndName] = conf;
             }
@@ -354,7 +354,7 @@ namespace Sharpmake.Generators.Generic
                 if (configurationNameMapping.TryGetValue(projectUniqueName, out otherConf))
                 {
                     throw new Error(
-                        "Project {0} ({4} in {5}) have 2 configurations with the same name: \"{1}\" for {2} and {3}",
+                        "Project {0} ({4} in {5}) has 2 configurations with the same name: \"{1}\" for {2} and {3}",
                         project.Name, conf.Name, otherConf.Target, conf.Target, projectFileInfo.Name, projectFileInfo.DirectoryName);
                 }
 
@@ -516,7 +516,7 @@ namespace Sharpmake.Generators.Generic
             options["LibraryPaths"] = libraryPaths.JoinStrings(" ");
 
             // Dependencies
-            var deps = new Strings();
+            var deps = new OrderableStrings();
             foreach (Project.Configuration depConf in conf.ResolvedDependencies)
             {
                 switch (depConf.Output)
@@ -525,16 +525,16 @@ namespace Sharpmake.Generators.Generic
                     case Project.Configuration.OutputType.Lib:
                     case Project.Configuration.OutputType.Dll:
                     case Project.Configuration.OutputType.DotNetClassLibrary:
-                        deps.Add(Path.Combine(depConf.TargetLibraryPath, FormatOutputFileName(depConf)));
+                        deps.Add(Path.Combine(depConf.TargetLibraryPath, FormatOutputFileName(depConf)), depConf.TargetFileOrderNumber);
                         break;
                     default:
-                        deps.Add(Path.Combine(depConf.TargetPath, FormatOutputFileName(depConf)));
+                        deps.Add(Path.Combine(depConf.TargetPath, FormatOutputFileName(depConf)), depConf.TargetFileOrderNumber);
                         break;
                 }
             }
             var depsRelative = Util.PathGetRelative(projectFileInfo.DirectoryName, deps);
             PathMakeUnix(depsRelative);
-            options["LDDEPS"] = string.Join(" ", depsRelative);
+            options["LDDEPS"] = depsRelative.JoinStrings(" ");
 
             // LinkCommand
             if (conf.Output == Project.Configuration.OutputType.Lib)

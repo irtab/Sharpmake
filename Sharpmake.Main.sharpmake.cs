@@ -12,6 +12,7 @@ using Sharpmake;
 [module: Sharpmake.Include("Sharpmake.Platforms/Sharpmake.Platforms.sharpmake.cs")]
 [module: Sharpmake.Include("Sharpmake.UnitTests/Sharpmake.UnitTests.sharpmake.cs")]
 [module: Sharpmake.Include("samples/Sharpmake.Samples.sharpmake.cs")]
+[module: Sharpmake.Include("Sharpmake.FunctionalTests/Sharpmake.FunctionalTests.sharpmake.cs")]
 
 namespace SharpmakeGen
 {
@@ -28,7 +29,7 @@ namespace SharpmakeGen
             result.Add(
                 new Target(
                     Platform.anycpu,
-                    DevEnv.vs2015,
+                    DevEnv.vs2017,
                     Optimization.Debug | Optimization.Release,
                     framework: DotNetFramework.v4_6_1
                 )
@@ -109,7 +110,8 @@ namespace SharpmakeGen
             foreach (Type projectType in Assembly.GetExecutingAssembly().GetTypes().Where(t =>
                 t.IsSubclassOf(typeof(Platforms.PlatformProject))   ||
                 t.IsSubclassOf(typeof(Extensions.ExtensionProject)) ||
-                t.IsSubclassOf(typeof(Samples.SampleProject)))
+                t.IsSubclassOf(typeof(Samples.SampleProject))       ||
+                t.IsSubclassOf(typeof(FunctionalTests.TestProject)))
             )
             {
                 conf.AddProject(projectType, target);

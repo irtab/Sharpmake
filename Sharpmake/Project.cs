@@ -96,6 +96,9 @@ namespace Sharpmake
 
         public Strings AdditionalSourceRootPaths = new Strings();  // More source directories to parse for files in addition to SourceRootPath
         public Strings SourceFiles = new Strings();                                     // Files in the project, may be full path of partial path from SourceRootPath
+        private Strings _preFilterSourceFiles = new Strings();                          // Files in the project before we applied fitlering, may be full path of partial path from SourceRootPath
+        public Strings PreFilterSourceFiles { get { return _preFilterSourceFiles; } }
+
 
         protected internal Strings SourceFilesExtensions = new Strings(".cpp", ".c", ".cc", ".h", ".inl", ".hpp", ".hh", ".asm");// All files under SourceRootPath are evaluated, if match found, it will be added to SourceFiles
         public Strings SourceFilesCompileExtensions = new Strings(".cpp", ".cc", ".c", ".asm");         // File that match this regex compile
@@ -326,6 +329,11 @@ namespace Sharpmake
             set { SetProperty(ref _stripFastBuildSourceFiles, value); }
         }
 
+        public bool IsFastBuildAll
+        {
+            get { return this is FastBuildAllProject; }
+        }
+
         private IEnumerable<Strings> GetStringFields()
         {
             yield return AdditionalSourceRootPaths;
@@ -429,9 +437,15 @@ namespace Sharpmake
         {
             foreach (string file in sourceFiles.Values)
             {
-                string extension = Path.GetExtension(file);
-                if (extensions.Contains(extension))
-                    files.Add(file);
+                // Support composite extensions(such as .sharpmake.cs)
+                foreach (string matchExtension in extensions.Values)
+                {
+                    if (file.EndsWith(matchExtension, StringComparison.OrdinalIgnoreCase))
+                    {
+                        files.Add(file);
+                        break;
+                    }
+                }
             }
         }
 
@@ -776,6 +790,8 @@ namespace Sharpmake
                 AddMatchExtensionFiles(files, ref NoneFilesCopyIfNewer, NoneExtensionsCopyIfNewer);
                 Util.ResolvePath(SourceRootPath, ref NoneFilesCopyIfNewer);
             }
+
+            _preFilterSourceFiles.AddRange(SourceFiles);
 
             if (SourceFilesFilters != null)
             {
@@ -1402,7 +1418,7 @@ namespace Sharpmake
         {
             var expectedType = typeof(Project.Configuration);
             if (configurationType == null || (configurationType != expectedType && !configurationType.IsSubclassOf(expectedType)))
-                throw new InternalError("configuration type {0} must be a subclass of {1}", targetType.FullName, expectedType.FullName);
+                throw new InternalError("configuration type '{0}' must be a subclass of '{1}'", configurationType?.FullName ?? "<null>", expectedType.FullName);
 
             ConfigurationType = configurationType;
 
@@ -1520,7 +1536,7 @@ namespace Sharpmake
                         {
                             if (!folder.StartsWith("$") && !includePathsExcludeFromWarningRegex.Any(regex => regex.Match(folder).Success) && !Directory.Exists(folder))
                             {
-                                ReportError($@"{conf.Project.SharpmakeCsFileName}: Error: Folder contained in include paths doesn't exist: {folder}.", true);
+                                ReportError($@"{conf.Project.SharpmakeCsFileName}: Warning: Folder contained in include paths doesn't exist: {folder}.", true);
                             }
                         }
                     }

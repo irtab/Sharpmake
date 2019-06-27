@@ -998,6 +998,7 @@ namespace Sharpmake.Generators.VisualStudio
                         Write(Template.Project.ProjectBegin, writer, resolver);
                         break;
                     case DevEnv.vs2017:
+                    case DevEnv.vs2019:
                         Write(Template.Project.ProjectBeginVs2017, writer, resolver);
                         break;
                     default:
@@ -1922,6 +1923,16 @@ namespace Sharpmake.Generators.VisualStudio
                 remainingSourcesFiles.Remove(xaml);
             }
 
+            foreach (var file in remainingNoneFiles)
+            {
+                itemGroups.Nones.Add(new ItemGroups.None { Include = file, LinkFolder = project.GetLinkFolder(file) });
+
+                // Removing from remainingSourceFiles because sometimes the file is in both list. Could happen for example if
+                // NoneExtensions contains .sharpmake.cs and SourceFilesExtensions contains .cs
+                // If we don't remove the file, it will be duplicated in the csproj in a <Compile> section and in a <None> section.
+                remainingSourcesFiles.Remove(file);
+            }
+
             foreach (var remainingSourcesFile in remainingSourcesFiles)
             {
                 itemGroups.Compiles.Add(new ItemGroups.Compile
@@ -1954,11 +1965,6 @@ namespace Sharpmake.Generators.VisualStudio
                     MergeWithCto = file.Equals("VSPackage.resx", StringComparison.InvariantCultureIgnoreCase) ? "true" : null,
                     LinkFolder = project.GetLinkFolder(file)
                 });
-            }
-
-            foreach (var file in remainingNoneFiles)
-            {
-                itemGroups.Nones.Add(new ItemGroups.None { Include = file, LinkFolder = project.GetLinkFolder(file) });
             }
 
             foreach (var file in resolvedNoneFilesAddIfNewer)

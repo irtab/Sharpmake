@@ -55,25 +55,30 @@ namespace Sharpmake
         vs2017 = 1 << 4,
 
         /// <summary>
+        /// Visual Studio 2019
+        /// </summary>
+        vs2019 = 1 << 5,
+
+        /// <summary>
         /// iOS project with Xcode.
         /// </summary>
-        xcode4ios = 1 << 5,
+        xcode4ios = 1 << 6,
 
         /// <summary>
         /// Eclipse.
         /// </summary>
-        eclipse = 1 << 6,
+        eclipse = 1 << 7,
 
         /// <summary>
         /// GNU Makefiles.
         /// </summary>
-        make = 1 << 7,
+        make = 1 << 8,
 
         /// <summary>
         /// All supported Visual Studio versions.
         /// </summary>
         [CompositeFragment]
-        VisualStudio = vs2010 | vs2012 | vs2013 | vs2015 | vs2017
+        VisualStudio = vs2010 | vs2012 | vs2013 | vs2015 | vs2017 | vs2019
     }
 
     // Mandatory
@@ -223,7 +228,24 @@ namespace Sharpmake
         public string GetTargetString()
         {
             FieldInfo[] fieldInfos = GetFragmentFieldInfo();
-            string result = String.Join("_", fieldInfos.Select(f => s_cachedFieldValueToString.GetOrAdd(f.GetValue(this), value => value.ToString())).ToArray());
+            string result = string.Join(
+                "_",
+                fieldInfos.Select(
+                    f => s_cachedFieldValueToString.GetOrAdd(
+                        f.GetValue(this),
+                        value =>
+                        {
+                            if (value is Platform)
+                            {
+                                var platform = (Platform)value;
+                                if (platform >= Platform._reserved9)
+                                    return Util.GetSimplePlatformString(platform).ToLower();
+                            }
+                            return value.ToString();
+                        }
+                    )
+                )
+            );
             return result;
         }
 
