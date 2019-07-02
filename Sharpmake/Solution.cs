@@ -50,7 +50,10 @@ namespace Sharpmake
         // Experimental! Create solution dependencies from the FastBuild projects outputting Exe to the FastBuildAll project, to fix "F5" behavior in visual studio http://www.fastbuild.org/docs/functions/vssolution.html
         public bool FastBuildAllSlnDependencyFromExe = false;
 
-        // For adding additional files/folders to the solution
+        /// <summary>
+        /// For adding additional files/folders to the solution
+        /// Keys are names of the directories in the virtual solution hierarchy, values are paths
+        /// </summary>
         public Dictionary<string, Strings> ExtraItems = new Dictionary<string, Strings>();
 
         private string _perforceRootPath = null;
@@ -155,7 +158,7 @@ namespace Sharpmake
             {
                 foreach (Configuration.IncludedProjectInfo includedProjectInfo in solutionConfiguration.IncludedProjectInfos)
                 {
-                    if (solutionConfiguration.IncludeOnlyFilterProject && !(includedProjectInfo.Project is FastBuildAllProject) && (includedProjectInfo.Project.SourceFilesFiltersCount == 0 || includedProjectInfo.Project.SkipProjectWhenFiltersActive))
+                    if (solutionConfiguration.IncludeOnlyFilterProject && !(includedProjectInfo.Project.IsFastBuildAll) && (includedProjectInfo.Project.SourceFilesFiltersCount == 0 || includedProjectInfo.Project.SkipProjectWhenFiltersActive))
                     {
                         projectsWereFiltered = true;
                         continue;
@@ -253,10 +256,27 @@ namespace Sharpmake
 
                     if (projectConfiguration == null)
                     {
-                        throw new Error(
-                            "Solution {0} for target '{1}' contains project {2} with invalid target '{3}'",
-                            GetType().FullName, solutionConfiguration.Target, project.GetType().FullName, configurationProject.Target
-                        );
+                        var messageBuilder = new System.Text.StringBuilder();
+                        messageBuilder.AppendFormat("Resolving dependencies for solution {0}, target '{1}': cannot find target '{3}' in project {2}",
+                            GetType().FullName, solutionConfiguration.Target, project.GetType().FullName, configurationProject.Target);
+                        messageBuilder.AppendLine();
+
+                        if (project.Configurations.Any())
+                        {
+                            messageBuilder.AppendLine("Project configurations are:");
+                            int confNum = 0;
+                            foreach (var conf in project.Configurations)
+                                messageBuilder.AppendLine(++confNum + "/" + project.Configurations.Count + " " + conf.ToString());
+                        }
+                        else
+                        {
+                            messageBuilder.AppendLine("The project does not contain any configurations!");
+                        }
+
+                        Trace.WriteLine(messageBuilder.ToString());
+                        Debugger.Break();
+
+                        throw new Error(messageBuilder.ToString());
                     }
 
                     if (configurationProject.Project == null)
@@ -330,13 +350,16 @@ namespace Sharpmake
                         else
                         {
                             if (!configurationProjectDependency.Target.IsEqualTo(dependencyProjectTarget))
+                            {
                                 throw new Error("In solution configuration (solution: {3}, config: {4}) the parent project {5} generates multiple dependency targets for the same child project {0}: {1} and {2}. Look for all AddPublicDependency() and AddPrivateDependency() calls for the child project and follow the dependency chain.",
-                                                configurationProjectDependency.Project?.GetType().ToString(),
-                                                configurationProjectDependency.Target,
-                                                dependencyProjectTarget,
-                                                solutionConfiguration.SolutionFileName,
-                                                solutionConfiguration.Target,
-                                                project.Name);
+                                    configurationProjectDependency.Project?.GetType().ToString(),
+                                    configurationProjectDependency.Target,
+                                    dependencyProjectTarget,
+                                    solutionConfiguration.SolutionFileName,
+                                    solutionConfiguration.Target,
+                                    project.Name
+                                );
+                            }
 
                             if (configurationProjectDependency.Project == null)
                                 configurationProjectDependency.Project = dependencyProject;
@@ -394,6 +417,17 @@ namespace Sharpmake
 
             foreach (Solution.Configuration conf in Configurations)
                 conf.Resolve(resolver);
+
+            foreach (var extraItemKey in ExtraItems.Keys.ToList())
+            {
+                Strings values = new Strings(ExtraItems[extraItemKey]);
+                foreach (string value in values)
+                {
+                    string newValue = resolver.Resolve(value);
+                    values.UpdateValue(value, newValue);
+                }
+                ExtraItems[extraItemKey] = values;
+            }
 
             _resolved = true;
         }

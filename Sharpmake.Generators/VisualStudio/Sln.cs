@@ -352,7 +352,7 @@ namespace Sharpmake.Generators.VisualStudio
             Solution.ResolvedProject fastBuildAllProjectForSolutionDependency = null;
             if (solution.FastBuildAllSlnDependencyFromExe)
             {
-                var fastBuildAllProjects = solutionProjects.Where(p => p.Project is FastBuildAllProject).ToArray();
+                var fastBuildAllProjects = solutionProjects.Where(p => p.Project.IsFastBuildAll).ToArray();
                 if (fastBuildAllProjects.Length > 1)
                     throw new Error("More than one FastBuildAll project");
                 if (fastBuildAllProjects.Length == 1)
@@ -373,7 +373,9 @@ namespace Sharpmake.Generators.VisualStudio
                     {
                         fileGenerator.Write(Template.Solution.ProjectBegin);
                         Strings buildDepsGuids = new Strings(resolvedProject.Configurations.SelectMany(
-                            c => c.GenericBuildDependencies.Select(
+                            c => c.GenericBuildDependencies.Where(
+                                p => (p.Project is FastBuildAllProject) == false || fastBuildAllProjectForSolutionDependency == null || p.Project == fastBuildAllProjectForSolutionDependency.Project
+                            ).Select(
                                 p => p.ProjectGuid ?? ReadGuidFromProjectFile(p.ProjectFullFileNameWithExtension)
                             )
                         ));
@@ -413,7 +415,7 @@ namespace Sharpmake.Generators.VisualStudio
                         fileGenerator.Write(Template.Solution.SolutionItemBegin);
                         foreach (string file in items.Value)
                         {
-                            using (fileGenerator.Declare("solutionItemPath", file))
+                            using (fileGenerator.Declare("solutionItemPath", Util.PathGetRelative(solutionPath, file)))
                                 fileGenerator.Write(Template.Solution.SolutionItem);
                         }
                         fileGenerator.Write(Template.Solution.ProjectSectionEnd);
@@ -542,8 +544,12 @@ namespace Sharpmake.Generators.VisualStudio
                         int maxEqualFragments = 0;
                         int[] solutionTargetValues = solutionTarget.GetFragmentsValue();
 
+                        Platform previousPlatform = Platform._reserved1;
+
                         foreach (var conf in solutionProject.Configurations)
                         {
+                            Platform currentTargetPlatform = conf.Target.GetPlatform();
+
                             int[] candidateTargetValues = conf.Target.GetFragmentsValue();
                             if (solutionTargetValues.Length != candidateTargetValues.Length)
                                 continue;
@@ -555,10 +561,11 @@ namespace Sharpmake.Generators.VisualStudio
                                     equalFragments++;
                             }
 
-                            if (equalFragments > maxEqualFragments)
+                            if ((equalFragments == maxEqualFragments && currentTargetPlatform < previousPlatform) || equalFragments > maxEqualFragments)
                             {
                                 projectTarget = conf.Target;
                                 maxEqualFragments = equalFragments;
+                                previousPlatform = currentTargetPlatform;
                             }
                         }
 

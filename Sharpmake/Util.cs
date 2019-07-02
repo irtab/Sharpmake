@@ -1390,6 +1390,197 @@ namespace Sharpmake
             return value;
         }
 
+        /**
+        * A simple json serializer.
+        * Does not serialize objects properties using reflection, data must be prepared by the caller.
+        * Supported types : IEnumerable, IDictionnary, string and system value types.
+        */
+        public class JsonSerializer : IDisposable
+        {
+            public const string NullString = "null";
+
+            // Must escape " / \ and control characters.
+            // The website : http://json.org/
+            // The rfc : https://tools.ietf.org/html/rfc8259#section-7
+            public static string EscapeJson(string value, bool quote = false, string nullValue = "null")
+            {
+                if (value == null)
+                    return nullValue;
+
+                StringBuilder sb = new StringBuilder(value.Length);
+
+                if (quote)
+                    sb.Append('"');
+
+                foreach (char c in value)
+                {
+                    switch (c)
+                    {
+                        case '\\':
+                        case '/':
+                        case '"':
+                            sb.Append('\\');
+                            sb.Append(c);
+                            break;
+                        case '\b':
+                            sb.Append("\\b");
+                            break;
+                        case '\f':
+                            sb.Append("\\f");
+                            break;
+                        case '\n':
+                            sb.Append("\\n");
+                            break;
+                        case '\r':
+                            sb.Append("\\r");
+                            break;
+                        case '\t':
+                            sb.Append("\\t");
+                            break;
+                        default:
+                            // Control characters range from 0x0000 to 0x001F (0x0020 is ' '/space)
+                            // The \n \t above also fall into that range, but json accepts them in the friendlier \\n \\t form.
+                            // Others are 'escaped' by printing their code point in hex.
+                            if (c < 0x0020)
+                            {
+                                // The Json format specifies 4 digit hex : \uXXXX
+                                sb.AppendFormat("\\u{0:X4}", (ushort)c);
+                            }
+                            else
+                            {
+                                sb.Append(c);
+                            }
+                            break;
+                    }
+                }
+
+                if (quote)
+                    sb.Append('"');
+
+                return sb.ToString();
+            }
+
+            private static bool IsNumber(object o)
+            {
+                return o is float || o is double || o is decimal ||
+                       o is sbyte || o is short || o is int || o is long ||
+                       o is byte || o is ushort || o is uint || o is ulong;
+            }
+
+            private TextWriter _writer;
+            private ISet<IEnumerable> _parents;
+
+            private string IndentationString => new string('\t', _parents.Count);
+            public bool IsOutputFormatted { get; set; }
+
+            public JsonSerializer(TextWriter writer)
+            {
+                _writer = writer;
+                _parents = new HashSet<IEnumerable>();
+            }
+
+            public void Flush()
+            {
+                _writer.Flush();
+            }
+
+            public void Dispose()
+            {
+                _writer.Dispose();
+            }
+
+            public void Serialize(object value)
+            {
+                if (value == null)
+                {
+                    _writer.Write(NullString);
+                }
+                else if (value is string || value is char)
+                {
+                    // String is IEnumerable, avoid serializing it as an array!
+                    _writer.Write(EscapeJson(value.ToString(), quote: true));
+                }
+                else if (value is IDictionary)
+                {
+                    // IDictionary is IEnumerable, avoid serializing it as an array!
+                    SerializeDictionary((IDictionary)value);
+                }
+                else if (value is IEnumerable)
+                {
+                    SerializeArray((IEnumerable)value);
+                }
+                else if (value is bool || IsNumber(value))
+                {
+                    // This *should* be safe without Escaping
+                    _writer.Write(EscapeJson(value.ToString().ToLower()));
+                }
+                else
+                {
+                    throw new ArgumentException(string.Format("Unsupported type '{0}'", value.GetType()));
+                }
+            }
+
+            private void SerializeArray(IEnumerable array)
+            {
+                SerializeSequence<object>(array, Tuple.Create('[', ']'), Serialize);
+            }
+
+            private void SerializeDictionary(IDictionary dict)
+            {
+                SerializeSequence<DictionaryEntry>(dict, Tuple.Create('{', '}'), e =>
+                {
+                    if (!(e.Key is string))
+                        throw new InvalidDataException(string.Format("Dictionary key '{0}' is not a string.", e.Key));
+
+                    Serialize(e.Key);
+                    _writer.Write(':');
+                    Serialize(e.Value);
+                });
+            }
+
+            private void SerializeSequence<T>(IEnumerable sequence, Tuple<char, char> delimiters, Action<T> serializeElement)
+            {
+                if (_parents.Contains(sequence))
+                    throw new InvalidDataException("Cycle detected during json serialization.");
+
+                _writer.Write(delimiters.Item1);
+                _parents.Add(sequence);
+
+                // IDictionary returns different enumerators depending on which interface GetEnumerator called from.
+                // IDictionary.GetEnumerator enumerates DictionaryEntry 
+                // IEnumerable.GetEnumerator enumerates KeyValuePair<>
+                bool first = true;
+                IEnumerator enumerator = (sequence as IDictionary)?.GetEnumerator() ?? sequence.GetEnumerator();
+                while (enumerator.MoveNext())
+                {
+                    if (!first)
+                        _writer.Write(',');
+
+                    // Write each element on its own line
+                    if (IsOutputFormatted)
+                    {
+                        _writer.WriteLine();
+                        _writer.Write(IndentationString);
+                    }
+
+                    serializeElement((T)enumerator.Current);
+
+                    first = false;
+                }
+
+                _parents.Remove(sequence);
+
+                // Extra newline after the last element, puts the closing delimiter on its own line
+                if (IsOutputFormatted)
+                {
+                    _writer.WriteLine();
+                    _writer.Write(IndentationString);
+                }
+
+                _writer.Write(delimiters.Item2);
+            }
+        }
+
         public static bool CreateSymbolicLink(string source, string target, bool isDirectory)
         {
             bool success = false;
@@ -1406,7 +1597,9 @@ namespace Sharpmake
                     Directory.Delete(source);
                 }
 
-                success = CreateSymbolicLink(source, target, isDirectory ? 1 : 0);
+                success = CreateSymbolicLink(source, target,
+                    (isDirectory ? SYMBOLIC_LINK_FLAG_DIRECTORY : SYMBOLIC_LINK_FLAG_FILE)
+                    | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE);
             }
             catch { }
             return success;
@@ -1414,6 +1607,9 @@ namespace Sharpmake
 
         [System.Runtime.InteropServices.DllImport("kernel32.dll")]
         private static extern bool CreateSymbolicLink(string lpSymlinkFileName, string lpTargetFileName, int dwFlags);
+        private const int SYMBOLIC_LINK_FLAG_FILE = 0x0;
+        private const int SYMBOLIC_LINK_FLAG_DIRECTORY = 0x1;
+        private const int SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2;
 
         public static bool IsSymbolicLink(string path)
         {
@@ -2012,7 +2208,7 @@ namespace Sharpmake
 
             if (!fullInputPath.StartsWith(inputHeadPath, StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException("The subpath to be replaced is not found at the beginning of the input path.");
+                throw new ArgumentException($"The subpath to be replaced '{inputHeadPath}'\n is not found at the beginning of the input path '{fullInputPath}'.");
             }
 
             var pathRelativeToOutput = fullInputPath.Substring(inputHeadPath.Length);
